@@ -1,4 +1,3 @@
-// routes/auth.js
 import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -14,7 +13,6 @@ function generateAccessToken(user) {
     {
       id: user.id,
       email: user.email,
-      // ถ้ามี role/อื่น ๆ ใส่เพิ่มได้ เช่น role: user.role
     },
     process.env.JWT_ACCESS_SECRET,
     { expiresIn: ACCESS_EXPIRES_IN }
@@ -32,15 +30,6 @@ function generateRefreshToken(user) {
   );
 }
 
-/**
- * POST /auth/login
- * body: { email, password }
- *
- * สมมติว่าใน DB มี table users:
- *   id INT
- *   email VARCHAR
- *   password_hash VARCHAR (เก็บ bcrypt hash)
- */
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -62,7 +51,6 @@ router.post('/login', async (req, res) => {
 
     const user = rows[0];
 
-    // เทียบ password ที่กรอกกับ hash ใน DB
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
@@ -71,9 +59,6 @@ router.post('/login', async (req, res) => {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // เก็บ refresh token ลง table refresh_tokens
-    // ต้องมีตารางแบบนี้คร่าว ๆ:
-    // id, user_id, token, expires_at, created_at
     await db.query(
       `
         INSERT INTO refresh_tokens (user_id, token, expires_at)
@@ -97,12 +82,60 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/**
- * POST /auth/refresh
- * body: { refreshToken }
- *
- * ใช้ refreshToken เพื่อขอ accessToken ใหม่ (และ refreshToken ใหม่)
- */
+router.post('/register', async (req, res) => {
+  const { email, studentId, prefix, firstName, lastName, password } = req.body;
+
+  if (!email || !studentId || !prefix || !firstName || !lastName || !password) {
+    return res
+      .status(400)
+      .json({ message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+  }
+
+  try {
+    const [emailRows] = await db.query(
+      'SELECT user_id FROM member WHERE email = ? LIMIT 1',
+      [email]
+    );
+
+    if (emailRows.length > 0) {
+      return res.status(400).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+    }
+
+    const [studentIdRows] = await db.query(
+      'SELECT user_id FROM member WHERE student_id = ? LIMIT 1',
+      [studentId]
+    );
+
+    if (studentIdRows.length > 0) {
+      return res.status(400).json({ message: 'รหัสนักศึกษานี้ถูกใช้งานแล้ว' });
+    }
+
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const [result] = await db.query(
+      `INSERT INTO member (email, student_id, prefix, first_name, last_name, password, created_at, perm_id, is_verified)
+       VALUES (?, ?, ?, ?, ?, ?, NOW(), 2, 0)`,
+      [email, studentId, title, firstName, lastName, hashedPassword]
+    );
+
+    return res.status(201).json({
+      message: 'สมัครสมาชิกสำเร็จ',
+      user: {
+        id: result.insertId,
+        email,
+        studentId,
+        title,
+        firstName,
+        lastName
+      }
+    });
+  } catch (err) {
+    console.error('Register error:', err);
+    return res.status(500).json({ message: 'มีข้อผิดพลาดภายในระบบ' });
+  }
+});
+
 router.post('/refresh', async (req, res) => {
   const { refreshToken } = req.body;
 
@@ -122,7 +155,6 @@ router.post('/refresh', async (req, res) => {
   const userId = payload.id;
 
   try {
-    // เช็คว่ามี refreshToken นี้อยู่ใน DB จริงไหม และยังไม่หมดอายุ
     const [rows] = await db.query(
       `
         SELECT * FROM refresh_tokens
@@ -138,7 +170,6 @@ router.post('/refresh', async (req, res) => {
         .json({ message: 'refreshToken ถูกเพิกถอนแล้ว หรือหมดอายุ' });
     }
 
-    // rotate token: ลบตัวเก่าออกก่อน
     await db.query(
       'DELETE FROM refresh_tokens WHERE user_id = ? AND token = ?',
       [userId, refreshToken]
@@ -152,7 +183,6 @@ router.post('/refresh', async (req, res) => {
     const newAccessToken = generateAccessToken(userForToken);
     const newRefreshToken = generateRefreshToken(userForToken);
 
-    // เก็บ refresh token ใหม่
     await db.query(
       `
         INSERT INTO refresh_tokens (user_id, token, expires_at)
@@ -171,12 +201,6 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
-/**
- * POST /auth/logout
- * body: { refreshToken }
- *
- * ลบ refreshToken ทิ้ง = logout
- */
 router.post('/logout', async (req, res) => {
   const { refreshToken } = req.body;
 
@@ -189,7 +213,6 @@ router.post('/logout', async (req, res) => {
     try {
       payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     } catch (err) {
-      // ถ้า verify ไม่ผ่าน (หมดอายุ/ปลอม) จะพยายามลบจาก DB ด้วย token อย่างเดียว
       payload = null;
     }
 
