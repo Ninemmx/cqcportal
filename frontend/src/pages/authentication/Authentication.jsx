@@ -9,7 +9,9 @@ import {
   Alert,
   Checkbox,
   Divider,
-  Select
+  Select,
+  Row,
+  Col
 } from 'antd';
 import {
   UserOutlined,
@@ -29,9 +31,20 @@ const Authentication = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [animating, setAnimating] = useState(false);
   const navigate = useNavigate();
   
   const API_URL = import.meta.env.PROD ? import.meta.env.VITE_API_PROD_URL : import.meta.env.VITE_API_DEV_URL;
+
+  const handleTabChange = (key) => {
+    if (key !== activeTab) {
+      setAnimating(true);
+      setTimeout(() => {
+        setActiveTab(key);
+        setAnimating(false);
+      }, 150);
+    }
+  };
 
   const onLoginFinish = async (values) => {
     setLoading(true);
@@ -91,7 +104,7 @@ const Authentication = () => {
         body: JSON.stringify({
           email: values.email,
           studentId: values.studentId,
-          title: values.title,
+          prefix: values.prefix,
           firstName: values.firstName,
           lastName: values.lastName,
           password: values.password,
@@ -125,7 +138,7 @@ const Authentication = () => {
       left: 0,
       width: '100vw',
       height: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'linear-gradient(135deg, #95ccffff 0%, #95ccffff 100%)',
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
@@ -136,7 +149,7 @@ const Authentication = () => {
       <Card
         style={{
           width: '100%',
-          maxWidth: 450,
+          maxWidth: 500,
           boxShadow: '0 15px 35px rgba(50,50,93,.1), 0 5px 15px rgba(0,0,0,.07)'
         }}
         bodyStyle={{ padding: '30px' }}
@@ -183,18 +196,29 @@ const Authentication = () => {
 
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           centered
           size="large"
+          animated={false}
         >
           <TabPane tab="เข้าสู่ระบบ" key="login">
-            <Form
-              name="login"
-              onFinish={onLoginFinish}
-              layout="vertical"
-              size="large"
+            <div
+              style={{
+                opacity: activeTab === 'login' && !animating ? 1 : 0,
+                transform: activeTab === 'login' && !animating ? 'translateX(0)' : 'translateX(-20px)',
+                transition: 'opacity 0.3s ease, transform 0.3s ease'
+              }}
             >
+              <Form
+                name="login"
+                onFinish={onLoginFinish}
+                layout="horizontal"
+                labelCol={{ span: 24 }}
+                wrapperCol={{ span: 24 }}
+                size="large"
+              >
               <Form.Item
+                label="อีเมล"
                 name="email"
                 rules={[
                   { required: true, message: 'กรุณากรอกอีเมล' },
@@ -202,23 +226,18 @@ const Authentication = () => {
                   { pattern: /^[^@]+@rmuti\.ac\.th$/, message: 'ต้องเป็น @rmuti.ac.th เท่านั้น' }
                 ]}
               >
-                <Input
-                  prefix={<MailOutlined />}
-                  placeholder="อีเมล"
-                />
+                <Input placeholder="อีเมล" />
               </Form.Item>
 
               <Form.Item
+                label="รหัสผ่าน"
                 name="password"
                 rules={[
                   { required: true, message: 'กรุณากรอกรหัสผ่าน!' },
                   { min: 6, message: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' }
                 ]}
               >
-                <Input.Password
-                  prefix={<LockOutlined />}
-                  placeholder="รหัสผ่าน"
-                />
+                <Input.Password placeholder="รหัสผ่าน" />
               </Form.Item>
 
               <Form.Item>
@@ -241,113 +260,135 @@ const Authentication = () => {
                   เข้าสู่ระบบ
                 </Button>
               </Form.Item>
-            </Form>
+              </Form>
+            </div>
           </TabPane>
 
           <TabPane tab="สมัครสมาชิก" key="register">
-            <Form
-              name="register"
-              onFinish={onRegisterFinish}
-              layout="vertical"
-              size="large"
+            <div
+              style={{
+                opacity: activeTab === 'register' && !animating ? 1 : 0,
+                transform: activeTab === 'register' && !animating ? 'translateX(0)' : 'translateX(20px)',
+                transition: 'opacity 0.3s ease, transform 0.3s ease'
+              }}
             >
-              <Form.Item
-                name="email"
-                rules={[
-                  { required: true, message: 'กรุณากรอกอีเมล!' },
-                  { type: 'email', message: 'รูปแบบอีเมลไม่ถูกต้อง!' },
-                  { pattern: /^[^@]+@rmuti\.ac\.th$/, message: 'ต้องเป็น @rmuti.ac.th เท่านั้น' }
-                ]}
+              <Form
+                name="register"
+                onFinish={onRegisterFinish}
+                layout="horizontal"
+                labelCol={{ span: 24 }}
+                wrapperCol={{ span: 24 }}
+                size="large"
               >
-                <Input
-                  prefix={<MailOutlined />}
-                  placeholder="อีเมล"
-                />
-              </Form.Item>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    label="อีเมล"
+                    name="email"
+                    rules={[
+                      { required: true, message: 'กรุณากรอกอีเมล!' },
+                      { type: 'email', message: 'รูปแบบอีเมลไม่ถูกต้อง!' },
+                      { pattern: /^[^@]+@rmuti\.ac\.th$/, message: 'ต้องเป็น @rmuti.ac.th เท่านั้น' }
+                    ]}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <Input placeholder="อีเมล" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label="รหัสนักศึกษา"
+                    name="studentId"
+                    rules={[
+                      { required: true, message: 'กรุณากรอกรหัสนักศึกษา!' },
+                      { pattern: /^[0-9]{11}-[0-9]{1}$/, message: 'รหัสนักศึกษาต้องเป็นรูปแบบ 66172310312-1!' }
+                    ]}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <Input placeholder="รหัสนักศึกษา (เช่น 66172310312-1)" />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-              <Form.Item
-                name="studentId"
-                rules={[
-                  { required: true, message: 'กรุณากรอกรหัสนักศึกษา!' },
-                  { pattern: /^[0-9]{10}$/, message: 'รหัสนักศึกษาต้องมี 10 หลัก!' }
-                ]}
-              >
-                <Input
-                  prefix={<IdcardOutlined />}
-                  placeholder="รหัสนักศึกษา"
-                />
-              </Form.Item>
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item
+                    label="คำนำหน้า"
+                    name="prefix"
+                    rules={[
+                      { required: true, message: 'กรุณาเลือกคำนำหน้า!' }
+                    ]}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <Select placeholder="คำนำหน้า">
+                      <Select.Option value="นาย">นาย</Select.Option>
+                      <Select.Option value="นาง">นาง</Select.Option>
+                      <Select.Option value="นางสาว">นางสาว</Select.Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item
+                    label="ชื่อ"
+                    name="firstName"
+                    rules={[
+                      { required: true, message: 'กรุณากรอกชื่อ!' }
+                    ]}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <Input placeholder="ชื่อ" />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item
+                    label="นามสกุล"
+                    name="lastName"
+                    rules={[
+                      { required: true, message: 'กรุณากรอกนามสกุล!' }
+                    ]}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <Input placeholder="นามสกุล" />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-              <Form.Item
-                name="title"
-                rules={[
-                  { required: true, message: 'กรุณาเลือกคำนำหน้า!' }
-                ]}
-              >
-                <Select placeholder="คำนำหน้า">
-                  <Select.Option value="นาย">นาย</Select.Option>
-                  <Select.Option value="นาง">นาง</Select.Option>
-                  <Select.Option value="นางสาว">นางสาว</Select.Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="firstName"
-                rules={[
-                  { required: true, message: 'กรุณากรอกชื่อ!' }
-                ]}
-              >
-                <Input
-                  prefix={<UserOutlined />}
-                  placeholder="ชื่อ"
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="lastName"
-                rules={[
-                  { required: true, message: 'กรุณากรอกนามสกุล!' }
-                ]}
-              >
-                <Input
-                  prefix={<UserOutlined />}
-                  placeholder="นามสกุล"
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="password"
-                rules={[
-                  { required: true, message: 'กรุณากรอกรหัสผ่าน!' },
-                  { min: 6, message: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' }
-                ]}
-              >
-                <Input.Password
-                  prefix={<LockOutlined />}
-                  placeholder="รหัสผ่าน"
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="confirmPassword"
-                dependencies={['password']}
-                rules={[
-                  { required: true, message: 'กรุณายืนยันรหัสผ่าน!' },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value || getFieldValue('password') === value) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(new Error('รหัสผ่านไม่ตรงกัน!'));
-                    },
-                  }),
-                ]}
-              >
-                <Input.Password
-                  prefix={<LockOutlined />}
-                  placeholder="ยืนยันรหัสผ่าน"
-                />
-              </Form.Item>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    label="รหัสผ่าน"
+                    name="password"
+                    rules={[
+                      { required: true, message: 'กรุณากรอกรหัสผ่าน!' },
+                      { min: 6, message: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' }
+                    ]}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <Input.Password placeholder="รหัสผ่าน" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label="ยืนยันรหัสผ่าน"
+                    name="confirmPassword"
+                    dependencies={['password']}
+                    rules={[
+                      { required: true, message: 'กรุณายืนยันรหัสผ่าน!' },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (!value || getFieldValue('password') === value) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(new Error('รหัสผ่านไม่ตรงกัน!'));
+                        },
+                      }),
+                    ]}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <Input.Password placeholder="ยืนยันรหัสผ่าน" />
+                  </Form.Item>
+                </Col>
+              </Row>
 
               <Form.Item
                 name="agreement"
@@ -375,7 +416,8 @@ const Authentication = () => {
                   สมัครสมาชิก
                 </Button>
               </Form.Item>
-            </Form>
+              </Form>
+            </div>
           </TabPane>
         </Tabs>
       </Card>
